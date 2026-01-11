@@ -43,8 +43,12 @@ Constraints enforced:
 - Timetable clashes are not allowed for a student
 
 ---
+### 2. 📄 **[Design Documentation (HLD and LLD)](./documentation/design-doc.md)** 
+- High-Level Design (HLD) and Low-Level Design (LLD) with system architecture
 
-### 2. Student Course Enrollment API
+
+
+### 3. Student Course Enrollment API
 
 **Input**
 - Student ID
@@ -62,7 +66,7 @@ Constraints enforced:
 
 ---
 
-### 3. Bonus Features
+### 4. Bonus Features
 
 #### Database Constraints
 - Foreign key constraints
@@ -75,7 +79,84 @@ Constraints enforced:
 
 ---
 
+---
+
+## Documentation
+
+Comprehensive documentation is available in the [`documentation`](./documentation) folder:
+
+- 📘 **[Setup Guide](./documentation/setup-guide.md)** - Complete setup instructions, database configuration, and troubleshooting
+- 🏗️ **[Design Documentation](./documentation/design-doc.md)** - High-Level Design (HLD) and Low-Level Design (LLD) with system architecture
+- 🔌 **[API Collections](./documentation/API-collections.md)** - Complete API documentation with cURL commands for testing
+- 🗄️ **[Database Schema](./documentation/database-schema.md)** - Detailed database schema with tables, relationships, and constraints
+- 📄 **[Schema SQL](./documentation/schema.sql)** - Complete SQL file for creating the database schema
+- ✅ **[Requirements Verification](./documentation/deliverables-review.md)** - Verification that all functional requirements and deliverables are met
+
+---
+
+## Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd course-enrollment-backend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Create database** (see [Setup Guide](./documentation/setup-guide.md))
+   ```bash
+   createdb -U postgres "course-enrollment-backend-db"
+   ```
+
+4. **Configure environment variables**
+   Create `.env` file:
+   ```env
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_USER=postgres
+   DB_PASSWORD=your_password
+   DB_NAME=course-enrollment-backend-db
+   PORT=3000
+   ```
+
+5. **Start the server**
+   ```bash
+   npm run start:dev
+   ```
+
+6. **Test the API**
+   ```bash
+   curl http://localhost:3000/
+   ```
+
+For detailed setup instructions, see the [Setup Guide](./documentation/setup-guide.md).
+
+---
+
 ## How to Run
 
-1. Clone the repository
-2. Install dependencies
+### Development Mode
+
+```bash
+npm run start:dev
+```
+
+### Production Mode
+
+```bash
+npm run build
+npm run start:prod
+```
+
+### Using Migrations
+
+```bash
+npm run build
+npx typeorm migration:run -d ormconfig.json
+```
+
+See [Database Schema](./documentation/database-schema.md) for migration details.
