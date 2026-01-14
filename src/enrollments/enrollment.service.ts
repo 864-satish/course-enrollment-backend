@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, In } from 'typeorm';
 import { Enrollment } from './entities/enrollment.entity';
@@ -25,9 +30,13 @@ export class EnrollmentService {
     course_ids: number[],
     semester_id: number,
   ): Promise<Enrollment[]> {
+    if (!course_ids || course_ids.length === 0) {
+      throw new BadRequestException('At least one course must be provided');
+    }
+
     // 1. Validate student exists
     const student = await this.studentRepository.findOneBy({ id: student_id });
-    if (!student) throw new BadRequestException('Student not found');
+    if (!student) throw new NotFoundException('Student not found');
 
     // 2. Validate all courses exist and belong to the same college as the student
     const courses = await this.courseRepository.findBy({
@@ -41,22 +50,42 @@ export class EnrollmentService {
       );
     }
 
-    // 3. Fetch all timetables for the selected courses
-    const timetables = await this.timetableRepository
+    // 3. Check for already enrolled courses in the same semester
+    const existingEnrollments = await this.enrollmentRepository.find({
+      where: { student_id, semester_id },
+    });
+
+    const alreadyEnrolledCourseIds = existingEnrollments
+      .map((e) => e.course_id)
+      .filter((id) => course_ids.includes(id));
+
+    if (alreadyEnrolledCourseIds.length > 0) {
+      throw new ConflictException(
+        `Student is already enrolled in courses: ${alreadyEnrolledCourseIds.join(
+          ', ',
+        )} for this semester`,
+      );
+    }
+
+    // 4. Fetch all timetables for the selected courses
+    const newCourseTimetables = await this.timetableRepository
       .createQueryBuilder('timetable')
       .where('timetable.course_id IN (:...courseIds)', {
         courseIds: course_ids,
       })
       .getMany();
 
-    // 4. Check for timetable clashes
-    for (let i = 0; i < timetables.length; i++) {
-      for (let j = i + 1; j < timetables.length; j++) {
+    // 5. Check for timetable clashes among the newly selected courses
+    for (let i = 0; i < newCourseTimetables.length; i++) {
+      for (let j = i + 1; j < newCourseTimetables.length; j++) {
         if (
-          timetables[i].day_of_week === timetables[j].day_of_week &&
+          newCourseTimetables[i].day_of_week ===
+            newCourseTimetables[j].day_of_week &&
           !(
-            timetables[i].end_time <= timetables[j].start_time ||
-            timetables[j].end_time <= timetables[i].start_time
+            newCourseTimetables[i].end_time <=
+              newCourseTimetables[j].start_time ||
+            newCourseTimetables[j].end_time <=
+              newCourseTimetables[i].start_time
           )
         ) {
           throw new BadRequestException(
@@ -66,7 +95,35 @@ export class EnrollmentService {
       }
     }
 
-    // 5. Save enrollments in a transaction
+    // 6. Check for timetable clashes with existing enrollments in the same semester
+    if (existingEnrollments.length > 0) {
+      const existingCourseIds = existingEnrollments.map((e) => e.course_id);
+
+      const existingTimetables = await this.timetableRepository
+        .createQueryBuilder('timetable')
+        .where('timetable.course_id IN (:...courseIds)', {
+          courseIds: existingCourseIds,
+        })
+        .getMany();
+
+      for (const existing of existingTimetables) {
+        for (const incoming of newCourseTimetables) {
+          if (
+            existing.day_of_week === incoming.day_of_week &&
+            !(
+              existing.end_time <= incoming.start_time ||
+              incoming.end_time <= existing.start_time
+            )
+          ) {
+            throw new BadRequestException(
+              'Timetable clash detected with existing enrollments',
+            );
+          }
+        }
+      }
+    }
+
+    // 7. Save enrollments in a transaction
     return await this.dataSource.transaction(async (manager) => {
       const enrollments: Enrollment[] = [];
       for (const course_id of course_ids) {
