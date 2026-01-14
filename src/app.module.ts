@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RedisModule } from './common/redis/redis.module';
 import { CollegeModule } from './colleges/college.module';
 import { StudentModule } from './students/student.module';
 import { CourseModule } from './courses/course.module';
@@ -21,6 +22,7 @@ import { AppService } from './app.service';
       autoLoadEntities: true,
       synchronize: true, // Set to false in production and use migrations
     }),
+    RedisModule,
     CollegeModule,
     StudentModule,
     CourseModule,
